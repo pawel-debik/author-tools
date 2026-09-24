@@ -1,0 +1,45 @@
+[
+    // Only in Markdown, so these keys keep what they do in other files.
+    // Rebind them in your own key bindings (Preferences -> Key Bindings)
+    // with the same commands.
+
+    // Author Tools: Scan Paragraph with Jev. Replaces Sublime's "Expand
+    // Selection to Tag" in Markdown.
+    {
+        "keys": ["ctrl+shift+a"],
+        "command": "author_tools_analyse_current_paragraph",
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+        ]
+    },
+
+    // Author Tools: Toggle Colours. Replaces Sublime's "Move File to
+    // Group 1" in Markdown, as ctrl+shift+2 replaces "Move File to Group 2".
+    {
+        "keys": ["ctrl+shift+1"],
+        "command": "author_tools_toggle_marks",
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+        ]
+    },
+
+    // Cycle through the colour modes: KAV, mood, tension, showing,
+    // telescoping.
+    {
+        "keys": ["ctrl+shift+2"],
+        "command": "author_tools_colour_marks_by",
+        "args": {"mode": "next"},
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+        ]
+    },
+
+    // Author Tools: Enable / Disable Analysis.
+    {
+        "keys": ["ctrl+shift+0"],
+        "command": "author_tools_toggle",
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+        ]
+    }
+]

@@ -3,14 +3,17 @@
 Experimental Sublime Text plugin with tools for fiction writers working in
 Markdown.
 
-## Shortcuts (macOS)
+## Shortcuts
 
-| Shortcut      | Command                                   | What it does                              |
-|---------------|-------------------------------------------|-------------------------------------------|
-| `cmd+shift+0` | Author Tools: Enable / Disable Analysis   | Author Tools on or off                    |
-| `cmd+shift+1` | Author Tools: Toggle Colours              | Colours on or off                         |
-| `cmd+shift+2` | Author Tools: Colour Marks By…            | Next colour mode (the command lists them) |
-| `cmd+shift+A` | Author Tools: Scan Paragraph with Jev     | Scan the paragraph, or each selected one  |
+| macOS         | Windows        | Command                                 | What it does                              |
+|---------------|----------------|-----------------------------------------|-------------------------------------------|
+| `cmd+shift+0` | `ctrl+shift+0` | Author Tools: Enable / Disable Analysis | Author Tools on or off                    |
+| `cmd+shift+1` | `ctrl+shift+1` | Author Tools: Toggle Colours            | Colours on or off                         |
+| `cmd+shift+2` | `ctrl+shift+2` | Author Tools: Colour Marks By…          | Next colour mode (the command lists them) |
+| `cmd+shift+A` | `ctrl+shift+A` | Author Tools: Scan Paragraph with Jev   | Scan the paragraph, or each selected one  |
+
+The shortcuts only work in Markdown files; elsewhere the keys keep their
+usual Sublime meaning.
 
 
 ## Paragraph analysis
