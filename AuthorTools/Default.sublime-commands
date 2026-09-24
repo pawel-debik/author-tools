@@ -1,0 +1,50 @@
+[
+    {
+        "caption": "Author Tools: Scan Paragraph with Jev",
+        "command": "author_tools_analyse_current_paragraph"
+    },
+    {
+        "caption": "Author Tools: Show Details",
+        "command": "author_tools_show_details"
+    },
+    {
+        "caption": "Author Tools: Toggle Colours",
+        "command": "author_tools_toggle_marks"
+    },
+    {
+        "caption": "Author Tools: Colour Marks By…",
+        "command": "author_tools_colour_marks_by"
+    },
+    {
+        "caption": "Author Tools: Toggle Paragraph Tint",
+        "command": "author_tools_toggle_paragraph_tint"
+    },
+    {
+        "caption": "Author Tools: Adverbs Report",
+        "command": "author_tools_adverbs_report"
+    },
+    {
+        "caption": "Author Tools: Dialogue Verbs Report",
+        "command": "author_tools_dialogue_verbs_report"
+    },
+    {
+        "caption": "Author Tools: Clear Cache",
+        "command": "author_tools_clear_cache"
+    },
+    {
+        "caption": "Author Tools: Enable / Disable Analysis",
+        "command": "author_tools_toggle"
+    },
+    {
+        "caption": "Author Tools: Show Last Raw Response",
+        "command": "author_tools_show_last_response"
+    },
+    {
+        "caption": "Preferences: Author Tools Settings",
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/AuthorTools/AuthorTools.sublime-settings",
+            "default": "// Your personal Author Tools settings.\n{\n\t\"api_key\": \"$0\"\n}\n"
+        }
+    }
+]

@@ -1,0 +1,238 @@
+// Author Tools - default settings.
+//
+// Don't edit this file. Open your personal copy with:
+//     Command Palette -> "Preferences: Author Tools Settings"
+// and put overrides (including your API key) there.
+{
+    // -------------------------------------------------------------------------
+    // MASTER SWITCH
+    // -------------------------------------------------------------------------
+
+    "enabled": true,
+
+
+    // -------------------------------------------------------------------------
+    // SCOPE
+    // -------------------------------------------------------------------------
+
+    // Only files with these extensions are analysed. Unsaved buffers are
+    // analysed when their syntax is Markdown.
+    "file_extensions": [".md", ".markdown"],
+
+    // Paragraphs shorter than this (after removing headings) are skipped.
+    "min_characters": 20,
+
+    // With text selected, "Author Tools: Scan Paragraph with Jev" sends each
+    // paragraph in the selection to Jev, one after the other, and marks each
+    // one. Paragraphs already analysed in their current form come from the
+    // cache. Selections touching more paragraphs than this are not scanned.
+    "max_scan_paragraphs": 30,
+
+    // Set to true to also analyse a selection automatically, as one piece of
+    // text, whenever you select something. Shown as "KAV (selection)".
+    // These results never change the margin marks. When false, a selection
+    // shows the paragraph it starts in.
+    "analyse_selections": false,
+
+    // Longer selections are not analysed automatically, so Select All can't
+    // send the whole manuscript. 10,000 characters is roughly 1,700 words.
+    "max_selection_characters": 10000,
+
+    // How long the caret must rest in a new paragraph before a request is
+    // sent. Cached paragraphs are shown immediately regardless.
+    "delay_ms": 400,
+
+
+    // -------------------------------------------------------------------------
+    // OPENROUTER
+    // -------------------------------------------------------------------------
+
+    // Configurable because the Decisions API is currently alpha.
+    "endpoint": "https://openrouter.ai/api/alpha/decisions",
+
+    // Pinned so behaviour doesn't silently change underneath us.
+    "model": "typesafe/jev-1.13",
+
+    // Put your real key in your USER settings, never here.
+    // Falls back to the OPENROUTER_API_KEY environment variable, which on
+    // macOS is only visible if Sublime was started from a terminal (subl).
+    "api_key": "YOUR_OPENROUTER_API_KEY",
+
+    "timeout_seconds": 15,
+
+
+    // -------------------------------------------------------------------------
+    // DISPLAY
+    // -------------------------------------------------------------------------
+
+    "show_scent": true,
+
+    // Percentages are each sense's share of the paragraph's total sensory
+    // score (each sense is rated 0-4). Paragraphs whose total is below this
+    // (abstract thought, exposition) show "little sensory content" instead.
+    "min_sensory_total": 0.5,
+
+    // Unicode block bars after each name: "Visual ███████   ".
+    // Every bar takes the space of bar_width blocks; bar_track fills the
+    // unused part of each block, so the status bar doesn't shift sideways.
+    // A sense at 0% gets no bar, and anything above 0% at least one block.
+    // The default is blank: an en space plus a three-per-em space, which is
+    // about as wide as one block. If the bars still shift, try e.g.
+    // "\u2002\u2005" (narrower) or "\u2003" (wider).
+    "show_bars": true,
+    "bar_width": 10,
+    "bar_track": "\u2002\u2004",
+
+    // Show the percentage after each bar: "Visual ███████     73%".
+    // Always shown when show_bars is false.
+    "show_percentages": false,
+
+    // false:  KAV    Kinetic ███           Audio ███           ...
+    // true:   KAV    K26 A33 V39 S3 ▲ Sh3 Te2 ominous
+    //
+    // Compact leaves more room for other status bar entries.
+    "compact": false,
+
+    // Gap between items. The status bar is plain text, so this is made of
+    // Unicode spaces rather than pixels: \u2003 (em space) is about 12-13px
+    // at the macOS status bar font size, \u2002 (en space) about half that.
+    // The default is roughly 30px. Use " | " for the original look.
+    "separator": "\u2003\u2003\u2002",
+
+
+    // -------------------------------------------------------------------------
+    // SHOWING VS TELLING, AND TENSION
+    // -------------------------------------------------------------------------
+
+    // Jev also rates each paragraph from 0 to 4 on how much it shows rather
+    // than tells, and how much tension it creates. The status bar ends with
+    // "Showing ●●●○    Tension ●●○○". Set to false to stop asking Jev.
+    "show_showing": true,
+    "show_tension": true,
+
+    // Jev also picks the paragraph's mood from a list, shown at the end of
+    // the status bar as "Mood ominous". Replace the list with your own by
+    // setting "moods" to {"name": "what it means", ...}.
+    "show_mood": true,
+    // "moods": {
+    //     "ominous": "foreboding, dread, menace, a sense that something bad is coming",
+    //     "tender": "warmth, love, affection, intimacy, comfort"
+    // },
+
+
+    // -------------------------------------------------------------------------
+    // DETAILS CARD
+    // -------------------------------------------------------------------------
+
+    // Hover over the margin (or run "Author Tools: Show Details") for a card
+    // with the word count, all of Jev's scores, and echoes. Hover beside a
+    // selection to get the card for the whole selection.
+    //
+    // Echoes are words repeated within echo_window_words of each other,
+    // counted locally without Jev. Common words never count, and neither do
+    // names (words that are always capitalised) unless echo_ignore_names is
+    // false. Add words to leave out, such as a character's nickname, to
+    // echo_ignore.
+    "echo_window_words": 50,
+    "echo_ignore_names": true,
+    "echo_ignore": [],
+    "echo_max_shown": 12,
+
+
+    // -------------------------------------------------------------------------
+    // MARGIN MARKS
+    // -------------------------------------------------------------------------
+
+    // An icon in the left margin of every analysed paragraph, coloured by its
+    // dominant sense. Paragraphs with little sensory content get no mark.
+    // Hover over the margin for the details card (see above).
+    "show_gutter_marks": true,
+
+    // Built-in icons: "circle", "dot", "bookmark", "cross".
+    "gutter_icon": "circle",
+
+    // Telescoping (after David Farland): Jev also rates how far each
+    // paragraph is zoomed out, from 0 (inside a character's mind) to 4
+    // (panoramic). Zoomed-out paragraphs get a ▲ instead of the icon above,
+    // zoomed-in paragraphs a ▼. Scores in between keep the icon above.
+    // The status bar ends with "▲ zoomed out", "● mid-range" or "▼ zoomed in".
+    // Set to false to stop asking Jev about it.
+    "show_telescoping": true,
+    "zoomed_in_below": 1.5,
+    "zoomed_out_above": 2.5,
+
+    // What the mark colours (and the paragraph's tint in the minimap) show:
+    // "senses" (the dominant sense), "mood", "tension", "showing" or
+    // "telescoping". Switch with "Author Tools: Colour Marks By…"; no new
+    // requests are needed. The ▲/▼ shapes show telescoping in every mode.
+    //
+    // To cycle through the modes with a key, add this to your key bindings:
+    //     { "keys": ["ctrl+alt+m"], "command": "author_tools_colour_marks_by",
+    //       "args": {"mode": "next"} }
+    "colour_marks_by": "senses",
+
+    // Also colour the paragraphs themselves, in the same colour as their
+    // mark: "background" shades the text of each line, "outline" draws a
+    // thin box around the paragraph. Switch on and off with "Author Tools:
+    // Toggle Paragraph Tint". How strong the colours are depends on your
+    // colour scheme.
+    "paragraph_tint": false,
+    "paragraph_tint_style": "background",
+
+    // Colours. "region.redish", "region.orangish", "region.yellowish",
+    // "region.greenish", "region.cyanish", "region.bluish",
+    // "region.purplish" and "region.pinkish" adapt to your colour scheme.
+    "mark_scopes": {
+        "kinetic": "region.redish",
+        "audio": "region.bluish",
+        "visual": "region.purplish",
+        "scent": "region.orangish"
+    },
+
+    // Mood colours. There are only eight, so similar moods share one. Moods
+    // missing here (e.g. from your own "moods" list) get one automatically.
+    "mood_scopes": {
+        "ominous": "region.purplish",
+        "fearful": "region.orangish",
+        "angry": "region.redish",
+        "melancholy": "region.bluish",
+        "bleak": "region.bluish",
+        "tender": "region.pinkish",
+        "joyful": "region.yellowish",
+        "playful": "region.yellowish",
+        "wondrous": "region.cyanish",
+        "calm": "region.greenish"
+    },
+
+    // Colours for tension, showing and telescoping, from a score of 0 (no
+    // tension / told / zoomed in) to 4 (intense / shown / zoomed out).
+    // Scores are rounded to the nearest colour; any number of colours works.
+    "scale_scopes": [
+        "region.bluish",
+        "region.greenish",
+        "region.yellowish",
+        "region.orangish",
+        "region.redish"
+    ],
+
+
+    // -------------------------------------------------------------------------
+    // WORD REPORTS
+    // -------------------------------------------------------------------------
+    //
+    // "Author Tools: Adverbs Report" and "Author Tools: Dialogue Verbs Report".
+
+    // Words to add to the built-in lists, e.g. ["tersely"] or ["rumbled"].
+    "extra_adverbs": [],
+    "extra_dialogue_verbs": [],
+
+    // Words to leave out of both reports, e.g. ["very", "called"].
+    "ignore_words": [],
+
+    // Dialogue verbs such as "called" or "added" are everyday verbs too, so
+    // they only count in the same sentence as a quote mark, and within
+    // quote_distance characters of it:  ”, she called  or  he added, “
+    // Set to false to count them everywhere.
+    "dialogue_verbs_near_quotes_only": true,
+    "quote_distance": 60
+}
