@@ -152,6 +152,10 @@ def view_is_applicable(view):
     if view.settings().get("is_widget"):
         return False
 
+    # The character interview tab (CharacterInterview.py).
+    if view.settings().get("author_tools_interview"):
+        return False
+
     extensions = get_settings().get("file_extensions", [".md"])
     extensions = [ext.lower() for ext in extensions]
 
@@ -365,6 +369,31 @@ SHOWING_INSTRUCTIONS = (
     "(\"she was angry\", \"he was a kind man\")."
 )
 
+# Thisness (haecceity): 0 is generic, 4 is unmistakably particular.
+THISNESS_KEY = "thisness"
+
+THISNESS_SCALE = [
+    "generic: stock images and category nouns that could be anywhere",
+    "mostly generic",
+    "some particular details",
+    "mostly particular",
+    "unmistakably particular: could only be this person, place or moment"
+]
+
+THISNESS_INSTRUCTIONS = (
+    "How particular is the fiction prose in `paragraph`? Rate its thisness: "
+    "detail so specific it could only belong to this character, this place, "
+    "this moment. Particular prose names exact things (\"a chipped Delft "
+    "saucer\", not \"a dish\"), chooses details that carry history or "
+    "reveal character, picks the unexpected detail a reader wouldn't have "
+    "supplied themselves, and names things the way this point-of-view "
+    "character would. Generic prose uses defaults and stock images (\"a tall "
+    "man\", \"a beautiful sunset\", \"the busy street\") that could describe "
+    "a thousand others. Rate the specificity of the detail, not how much "
+    "sensory detail there is: a paragraph full of sensation can still be "
+    "generic, and a reflective one can be particular."
+)
+
 # Tension: 0 is none, 4 is intense.
 TENSION_KEY = "tension"
 
@@ -388,6 +417,11 @@ EXTRA_QUESTIONS = {
         "setting": "show_showing",
         "instructions": SHOWING_INSTRUCTIONS,
         "criteria": SHOWING_SCALE
+    },
+    THISNESS_KEY: {
+        "setting": "show_thisness",
+        "instructions": THISNESS_INSTRUCTIONS,
+        "criteria": THISNESS_SCALE
     },
     TENSION_KEY: {
         "setting": "show_tension",
@@ -504,7 +538,8 @@ def build_request_payload(paragraph, model):
 #
 # It returns (scores, raw_response_text), where scores maps each sense to
 # a number from 0 (absent) to SCORE_MAX (dominant), plus a 0 to SCORE_MAX
-# score for each enabled extra question (telescoping, showing, tension), and
+# score for each enabled extra question (telescoping, showing, thisness,
+# tension), and
 # MOOD_KEY (an option name) when mood is on.
 # ------------------------------------------------------------------------------
 
@@ -752,6 +787,7 @@ LEVEL_DOTS = 4
 LEVEL_ITEMS = (
     # key, status bar name, compact name
     (SHOWING_KEY, "Showing", "Sh"),
+    (THISNESS_KEY, "Thisness", "Th"),
     (TENSION_KEY, "Tension", "Te")
 )
 
@@ -764,8 +800,8 @@ def format_dots(value):
 
 def format_levels(scores, compact=False):
     """
-    ["Showing ●●●○", "Tension ●●○○", "Mood ominous"], or
-    ["Sh3", "Te2", "ominous"] when compact, for the enabled questions that
+    ["Showing ●●●○", "Thisness ●●○○", "Tension ●●○○", "Mood ominous"], or
+    ["Sh3", "Th2", "Te2", "ominous"] when compact, for the enabled questions that
     have an answer.
     """
     items = []
@@ -796,9 +832,10 @@ def format_scores(scores, selection=False):
 
     Default:  KAV    Kinetic ███           Audio ███           Visual ...
     No bars:  KAV    Kinetic  26%    Audio  33%    Visual  39%    Scent   3%
-    Compact:  KAV    K26 A33 V39 S3 ▲ Sh3 Te2 ominous
+    Compact:  KAV    K26 A33 V39 S3 ▲ Sh3 Th2 Te2 ominous
 
-    The telescoping zoom ("▲ zoomed out"), showing, tension and mood come
+    The telescoping zoom ("▲ zoomed out"), showing, thisness, tension and
+    mood come
     last.
     """
     settings = get_settings()
@@ -874,7 +911,8 @@ def format_scores(scores, selection=False):
 #
 # Every analysed paragraph gets an icon in the left margin. Its colour shows
 # one measurement at a time, chosen with "Author Tools: Colour Marks By…":
-# the dominant sense (the default), mood, tension, showing or telescoping.
+# the dominant sense (the default), mood, tension, showing, thisness or
+# telescoping.
 # The colour also tints the paragraph in the minimap, so the balance of a
 # whole scene is visible while scrolling.
 #
@@ -914,13 +952,16 @@ ZOOM_ICONS = {
 PACKAGE_NAME = __package__ or "AuthorTools"
 
 # Also the order of "Colour Marks By…" and of cycling with {"mode": "next"}.
-COLOUR_MODES = ("senses", "mood", "tension", "showing", "telescoping")
+COLOUR_MODES = (
+    "senses", "mood", "tension", "showing", "thisness", "telescoping"
+)
 
 COLOUR_MODE_NAMES = {
     "senses": "Dominant sense",
     "mood": "Mood",
     "tension": "Tension",
     "showing": "Showing vs telling",
+    "thisness": "Thisness",
     "telescoping": "Telescoping"
 }
 
@@ -930,6 +971,7 @@ COLOUR_MODE_SHORT_NAMES = {
     "mood": "Mood",
     "tension": "Tension",
     "showing": "Showing",
+    "thisness": "Thisness",
     "telescoping": "Telescoping"
 }
 
@@ -938,6 +980,7 @@ COLOUR_MODE_SHORT_NAMES = {
 SCALE_MODES = {
     "tension": (TENSION_KEY, "no tension", "intense"),
     "showing": (SHOWING_KEY, "told", "shown"),
+    "thisness": (THISNESS_KEY, "generic", "particular"),
     "telescoping": (TELESCOPE_KEY, "zoomed in", "zoomed out")
 }
 
@@ -1431,6 +1474,11 @@ CARD_BAR_MIN_PX = 38
 
 SHOWING_WORDS = ["told", "mostly told", "mixed", "mostly shown", "shown"]
 
+THISNESS_WORDS = [
+    "generic", "mostly generic", "some particulars", "mostly particular",
+    "particular"
+]
+
 CARD_CSS = """
 body {
     margin: 0;
@@ -1540,6 +1588,12 @@ def score_rows(scores, settings):
         value = scores[SHOWING_KEY]
         extra_rows.append(card_row("Showing", "{} <span class=\"muted\">{}</span>".format(
             format_dots(value), level_word(value, SHOWING_WORDS)
+        )))
+
+    if scores.get(THISNESS_KEY) is not None and question_enabled(THISNESS_KEY):
+        value = scores[THISNESS_KEY]
+        extra_rows.append(card_row("Thisness", "{} <span class=\"muted\">{}</span>".format(
+            format_dots(value), level_word(value, THISNESS_WORDS)
         )))
 
     if scores.get(TENSION_KEY) is not None and question_enabled(TENSION_KEY):

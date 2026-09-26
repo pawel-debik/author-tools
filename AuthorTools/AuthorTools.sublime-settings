@@ -101,13 +101,17 @@
 
 
     // -------------------------------------------------------------------------
-    // SHOWING VS TELLING, AND TENSION
+    // SHOWING VS TELLING, THISNESS AND TENSION
     // -------------------------------------------------------------------------
 
     // Jev also rates each paragraph from 0 to 4 on how much it shows rather
-    // than tells, and how much tension it creates. The status bar ends with
-    // "Showing ●●●○    Tension ●●○○". Set to false to stop asking Jev.
+    // than tells, how particular its details are (thisness: 0 is generic
+    // stock images, 4 is detail that could only belong to this character,
+    // place or moment), and how much tension it creates. The status bar ends
+    // with "Showing ●●●○    Thisness ●●○○    Tension ●●○○". Set to false to
+    // stop asking Jev.
     "show_showing": true,
+    "show_thisness": true,
     "show_tension": true,
 
     // Jev also picks the paragraph's mood from a list, shown at the end of
@@ -162,8 +166,8 @@
     "zoomed_out_above": 2.5,
 
     // What the mark colours (and the paragraph's tint in the minimap) show:
-    // "senses" (the dominant sense), "mood", "tension", "showing" or
-    // "telescoping". Switch with "Author Tools: Colour Marks By…"; no new
+    // "senses" (the dominant sense), "mood", "tension", "showing",
+    // "thisness" or "telescoping". Switch with "Author Tools: Colour Marks By…"; no new
     // requests are needed. The ▲/▼ shapes show telescoping in every mode.
     //
     // To cycle through the modes with a key, add this to your key bindings:
@@ -204,8 +208,9 @@
         "calm": "region.greenish"
     },
 
-    // Colours for tension, showing and telescoping, from a score of 0 (no
-    // tension / told / zoomed in) to 4 (intense / shown / zoomed out).
+    // Colours for tension, showing, thisness and telescoping, from a score of
+    // 0 (no tension / told / generic / zoomed in) to 4 (intense / shown /
+    // particular / zoomed out).
     // Scores are rounded to the nearest colour; any number of colours works.
     "scale_scopes": [
         "region.bluish",
@@ -234,5 +239,68 @@
     // quote_distance characters of it:  ”, she called  or  he added, “
     // Set to false to count them everywhere.
     "dialogue_verbs_near_quotes_only": true,
-    "quote_distance": 60
+    "quote_distance": 60,
+
+
+    // -------------------------------------------------------------------------
+    // CHARACTER INTERVIEWS
+    // -------------------------------------------------------------------------
+    //
+    // Select a passage and run "Author Tools: Ask Character…" to hear what a
+    // character thinks of it, in their own voice. "Author Tools: Ask
+    // Follow-up…" carries on the conversation.
+
+    // Your story folder. Set this in your USER settings, next to your API
+    // key. It holds:
+    //
+    //     characters/          one Markdown file per character
+    //     story_so_far.md      optional, sent along to every character
+    //
+    // macOS:    "story_folder": "~/Documents/My Novel"
+    // Windows:  "story_folder": "C:/Users/you/Documents/My Novel"
+    //           (forward slashes, or double backslashes: "C:\\Users\\...")
+    //
+    // A character file may start with a header:
+    //     ---
+    //     name: Mara Voss
+    //     aliases: [Mara, the Captain]
+    //     ---
+    // followed by anything you like about the character. Without a header,
+    // the file name is the name.
+    //
+    // When empty, the example story in the package's "example" folder is
+    // used. When that has been deleted too, the character commands are
+    // hidden.
+    "story_folder": "",
+
+    // The questions offered after choosing a character. The list always ends
+    // with "Type your own question…".
+    "character_questions": [
+        "Would you really do this?",
+        "How does this make you feel?",
+        "What are you not saying here?",
+        "What would you do instead?"
+    ],
+
+    // Where answers appear: "popup" (beside the selection, closes with Escape
+    // or when the caret moves) and/or "tab" (an "Interview" tab beside the
+    // manuscript that keeps the whole conversation).
+    "character_reply_display": ["popup", "tab"],
+
+    // Any OpenRouter chat model. Uses the same api_key as above.
+    "character_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+    "character_model": "deepseek/deepseek-v4.1-flash",
+
+    // Higher is livelier, lower more predictable. null uses the model's default.
+    "character_temperature": 0.8,
+
+    "character_timeout_seconds": 90,
+
+    // Longer selections are not sent. 20,000 characters is roughly 3,500 words.
+    "character_max_characters": 20000,
+
+    // Replaces the built-in instructions (stay in character, first person, be
+    // honest, no stage directions, keep it short). {name} becomes the
+    // character's name. Empty uses the built-in ones.
+    "character_instructions": ""
 }

@@ -30,13 +30,16 @@ usual Sublime meaning.
   character's mind, or up close through their eyes), and a circle in
   between. The status bar shows the same at the end ("▲ zoomed out").
   Turn off with `show_telescoping`.
-- Jev also rates showing vs telling and tension (0–4, shown as dots in the
-  status bar). Turn off with `show_showing` / `show_tension`.
+- Jev also rates showing vs telling, thisness and tension (0–4, shown as
+  dots in the status bar). Thisness is how particular the details are:
+  "a chipped Delft saucer" rather than "a dish", details that could only
+  belong to this character, place or moment. Turn off with `show_showing` /
+  `show_thisness` / `show_tension`.
 - Jev also picks a mood ("Mood ominous") from a list you can replace with
   the `moods` setting. Turn off with `show_mood`.
 - "Author Tools: Colour Marks By…" switches what the mark colours (and the
-  minimap tint) show: dominant sense, mood, tension, showing, or
-  telescoping. Nothing is re-analysed; the status bar shows the colour key,
+  minimap tint) show: dominant sense, mood, tension, showing, thisness,
+  or telescoping. Nothing is re-analysed; the status bar shows the colour key,
   and afterwards the current mode ("Colours: KAV"). "Author Tools: Toggle
   Colours" hides or shows all the colours. Colours are in `mark_scopes`,
   `mood_scopes` and `scale_scopes`.
@@ -79,6 +82,103 @@ Each lists the words found, most used first. Choose a word to list its
 occurrences; moving through that list scrolls to each one. "Select all"
 selects every occurrence. Escape goes back, and from the word list returns
 you to where you were.
+
+## Character interviews
+
+Ask your characters what they think of a passage, in their own voice.
+
+1. Select the passage.
+2. Run "Author Tools: Ask Character…" and pick a character (those named in
+   the selection come first).
+3. Pick a question ("Would you really do this?", "How does this make you
+   feel?", …) or type your own.
+
+The answer appears in a popup beside the selection and in an "Interview"
+tab beside the manuscript, which keeps the whole conversation. "Author
+Tools: Ask Follow-up…" (or "Ask Character…" from inside the Interview tab)
+asks the same character another question, with the conversation so far.
+Turn either display off with `character_reply_display`.
+
+### Setting up your story folder
+
+Open "Preferences: Author Tools Settings" and add `story_folder` next to
+your API key:
+
+```jsonc
+// Your personal Author Tools settings.
+{
+    "api_key": "sk-or-...",
+    "story_folder": "~/Documents/My Novel"
+}
+```
+
+On Windows, use forward slashes (or double backslashes):
+
+```jsonc
+{
+    "api_key": "sk-or-...",
+    "story_folder": "C:/Users/you/Documents/My Novel"
+}
+```
+
+The story folder looks like this:
+
+```
+My Novel/
+├── story_so_far.md        (optional)
+└── characters/
+    ├── character1.md
+    └── character2.md
+```
+
+Without `story_folder`, the example story in
+[AuthorTools/example](AuthorTools/example/) is used, for testing: open
+`AuthorTools/example/chapter-12.md`, select a passage and ask. Without
+`story_folder` and without the example folder, the character commands are
+hidden.
+
+### Character file (`characters/character1.md`)
+
+Everything below the header is sent to the model as written, so the
+sections are only a suggestion. Without the header, the file name is used
+as the name.
+
+```markdown
+---
+name: Character One
+aliases: [One, the Captain]
+---
+## Who they are
+Age, background, role in the story, what shaped them.
+
+## Personality
+Traits, values, fears, desires, and contradictions.
+
+## Voice
+How they talk: sentence length, pet phrases, what they never say.
+
+## Relationships
+- **Character Two**: what they are to each other.
+
+## What they know
+Only what has happened up to chapter 1. They don't know that ...
+
+## Example lines
+"A line of dialogue in their voice."
+"Another one."
+```
+
+### Story so far (`story_so_far.md`)
+
+```markdown
+# The story so far (up to the end of chapter 1)
+
+What has happened, who is where, and what's at stake right now.
+```
+
+Answers come from `character_model` (DeepSeek V4.1 Flash by default) through
+OpenRouter's chat endpoint, with the same API key. This works even when the
+analysis is disabled.
 
 ## API key
 

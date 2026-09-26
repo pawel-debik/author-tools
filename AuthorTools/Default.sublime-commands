@@ -28,6 +28,14 @@
         "command": "author_tools_dialogue_verbs_report"
     },
     {
+        "caption": "Author Tools: Ask Character…",
+        "command": "author_tools_ask_character"
+    },
+    {
+        "caption": "Author Tools: Ask Follow-up…",
+        "command": "author_tools_character_follow_up"
+    },
+    {
         "caption": "Author Tools: Clear Cache",
         "command": "author_tools_clear_cache"
     },
@@ -44,7 +52,7 @@
         "command": "edit_settings",
         "args": {
             "base_file": "${packages}/AuthorTools/AuthorTools.sublime-settings",
-            "default": "// Your personal Author Tools settings.\n{\n\t\"api_key\": \"$0\"\n}\n"
+            "default": "// Your personal Author Tools settings.\n{\n\t\"api_key\": \"$0\",\n\t\"story_folder\": \"\"\n}\n"
         }
     }
 ]
