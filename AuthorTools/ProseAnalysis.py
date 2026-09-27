@@ -62,6 +62,9 @@ HEADING_RE = re.compile(r"^\s{0,3}#{1,6}(\s|$)")
 # Caching by text rather than position means a paragraph that merely moves
 # (because you inserted text above it) keeps its result, while a paragraph you
 # edit gets a new hash and will be analysed again when you next enter it.
+#
+# The cache is also saved per manuscript in a sidecar file (see SAVED SCORES
+# below), so results survive restarting Sublime.
 # ------------------------------------------------------------------------------
 
 CACHE = {}
@@ -283,16 +286,27 @@ def current_target(view):
     return ("paragraph", region.begin()), region, text, False
 
 
-def make_paragraph_hash(text):
+def request_namespace():
     """
-    Stable digest for caching. Python's hash() is not stable across sessions.
+    The full question, without a paragraph. Part of every hash, so changing
+    the instructions or criteria never serves results produced by an older
+    question.
     """
-    # Includes the full question, so changing the instructions or
-    # criteria never serves results produced by an older question.
-    namespace = json.dumps(
+    return json.dumps(
         build_request_payload("", get_settings().get("model", DEFAULT_MODEL)),
         sort_keys=True
     )
+
+
+def make_paragraph_hash(text, namespace=None):
+    """
+    Stable digest for caching. Python's hash() is not stable across sessions.
+
+    Pass `namespace` (from request_namespace()) when hashing many paragraphs
+    at once, so the question is only built once.
+    """
+    if namespace is None:
+        namespace = request_namespace()
 
     return hashlib.sha1(
         (namespace + "\n" + text).encode("utf-8")
@@ -1249,6 +1263,31 @@ def update_paragraph_mark(view, region, scores):
     redraw_marks(view)
 
 
+def replace_paragraph_marks(view, found):
+    """
+    Forget every remembered paragraph and remember `found` instead, a list
+    of (region, scores); then redraw the marks once.
+    """
+    settings = view.settings()
+
+    for paragraph_id in settings.get(PARAGRAPHS_SETTING) or {}:
+        view.erase_regions(paragraph_key(paragraph_id))
+
+    paragraphs = {}
+
+    for index, (region, scores) in enumerate(found):
+        paragraph_id = str(index)
+        view.add_regions(
+            paragraph_key(paragraph_id), [region], "", "", sublime.HIDDEN
+        )
+        paragraphs[paragraph_id] = scores
+
+    settings.set(NEXT_ID_SETTING, len(found))
+    settings.set(PARAGRAPHS_SETTING, paragraphs)
+
+    redraw_marks(view)
+
+
 def redraw_marks(view):
     """
     Draw the marks for every remembered paragraph in the current colour mode.
@@ -1702,7 +1741,10 @@ def get_state(view):
                 # Bumped by every selection scan, which stops the previous
                 # one; and the region keys that scan is still tracking.
                 "scan_token": 0,
-                "scan_keys": []
+                "scan_keys": [],
+                # Whether the saved scores have been drawn in this view
+                # yet (see restore_saved_scores).
+                "restored": False
             }
             VIEW_STATE[view.id()] = state
 
@@ -1734,6 +1776,10 @@ def handle_navigation(view, force=False):
         return
 
     state = get_state(view)
+
+    if not state["restored"]:
+        restore_saved_scores(view)
+
     target, region, text, is_selection = current_target(view)
 
     if not force and target == state["target"]:
@@ -1794,12 +1840,14 @@ def handle_navigation(view, force=False):
     delay_ms = 0 if force else int(get_settings().get("delay_ms", 400))
 
     sublime.set_timeout_async(
-        lambda: start_request(view, token, text, paragraph_hash, force),
+        lambda: start_request(
+            view, token, text, paragraph_hash, force, is_selection
+        ),
         delay_ms
     )
 
 
-def start_request(view, token, paragraph, paragraph_hash, force):
+def start_request(view, token, paragraph, paragraph_hash, force, is_selection):
     """
     Runs after the debounce delay. Proceeds only if the caret is still in the
     same paragraph, so holding the down arrow through fifteen paragraphs does
@@ -1835,12 +1883,15 @@ def start_request(view, token, paragraph, paragraph_hash, force):
     # event thread (which handles other plugins' events too).
     threading.Thread(
         target=analysis_worker,
-        args=(view, paragraph, paragraph_hash, read_request_config()),
+        args=(
+            view, paragraph, paragraph_hash, is_selection,
+            read_request_config()
+        ),
         daemon=True
     ).start()
 
 
-def analysis_worker(view, paragraph, paragraph_hash, config):
+def analysis_worker(view, paragraph, paragraph_hash, is_selection, config):
     try:
         scores, raw = fetch_openrouter(paragraph, config)
 
@@ -1848,6 +1899,10 @@ def analysis_worker(view, paragraph, paragraph_hash, config):
 
         with CACHE_LOCK:
             CACHE[paragraph_hash] = scores
+
+        # Selections are not paragraphs, so their scores are not saved.
+        if not is_selection:
+            save_score(view, paragraph, paragraph_hash, scores)
 
         sublime.set_timeout_async(
             lambda: finish_analysis_success(view, paragraph_hash, scores),
@@ -1903,8 +1958,8 @@ def finish_analysis_error(view, paragraph_hash, error_message):
 #
 # "Scan Paragraph with Jev" with text selected sends every paragraph the
 # selection touches to Jev, one after the other, and marks each one as its
-# result arrives. A paragraph whose current text was already analysed is
-# taken from the cache instead of sent again.
+# result arrives. Every paragraph is sent, even one already analysed, so a
+# scan is also the way to refresh results.
 #
 # Each paragraph is tracked as a hidden region while it waits, so it keeps
 # its place when you type elsewhere. A paragraph edited before its result
@@ -1917,13 +1972,14 @@ def finish_analysis_error(view, paragraph_hash, error_message):
 SCAN_KEY_PREFIX = "author_tools_scan_"
 
 
-def selected_paragraphs(view):
+def paragraphs_in(view, selections):
     """
-    The paragraphs touched by any selection, in document order.
+    The paragraphs touched by any of `selections`, in document order.
     """
     regions = []
+    seen = set()
 
-    for selection in view.sel():
+    for selection in selections:
         point = selection.begin()
 
         while point < selection.end():
@@ -1934,12 +1990,21 @@ def selected_paragraphs(view):
                 point = view.full_line(point).end()
                 continue
 
-            if region not in regions:
+            if (region.a, region.b) not in seen:
+                seen.add((region.a, region.b))
                 regions.append(region)
 
             point = view.full_line(region.end()).end()
 
     return sorted(regions, key=lambda region: region.begin())
+
+
+def selected_paragraphs(view):
+    return paragraphs_in(view, view.sel())
+
+
+def all_paragraphs(view):
+    return paragraphs_in(view, [sublime.Region(0, view.size())])
 
 
 def stop_scan(view):
@@ -2014,38 +2079,36 @@ def scan_worker(view, token, items, config):
             return
 
         with CACHE_LOCK:
-            scores = CACHE.get(paragraph_hash)
+            IN_FLIGHT.add(paragraph_hash)
 
-            if scores is None:
-                IN_FLIGHT.add(paragraph_hash)
+        set_status(view, with_note(
+            "scanning {} of {}…".format(index + 1, total)
+        ))
 
-        if scores is None:
-            set_status(view, with_note(
-                "scanning {} of {}…".format(index + 1, total)
-            ))
+        try:
+            scores, raw = fetch_openrouter(text, config)
+            LAST_RAW["text"] = raw
 
-            try:
-                scores, raw = fetch_openrouter(text, config)
-                LAST_RAW["text"] = raw
+            with CACHE_LOCK:
+                CACHE[paragraph_hash] = scores
 
-                with CACHE_LOCK:
-                    CACHE[paragraph_hash] = scores
+            save_score(view, text, paragraph_hash, scores)
 
-            except Exception as exc:
-                error_message = str(exc)
-                print("[Author Tools] {}".format(error_message))
+        except Exception as exc:
+            error_message = str(exc)
+            print("[Author Tools] {}".format(error_message))
 
-                sublime.set_timeout_async(
-                    lambda: finish_scan_error(
-                        view, token, error_message, index + 1, total
-                    ),
-                    0
-                )
-                return
+            sublime.set_timeout_async(
+                lambda: finish_scan_error(
+                    view, token, error_message, index + 1, total
+                ),
+                0
+            )
+            return
 
-            finally:
-                with CACHE_LOCK:
-                    IN_FLIGHT.discard(paragraph_hash)
+        finally:
+            with CACHE_LOCK:
+                IN_FLIGHT.discard(paragraph_hash)
 
         sublime.set_timeout_async(
             lambda key=key, text=text, paragraph_hash=paragraph_hash,
@@ -2099,6 +2162,288 @@ def finish_scan_error(view, token, error_message, number, total):
     set_status(view, with_note("ERROR: {} (scan stopped at {} of {})".format(
         short_error, number, total
     )))
+
+
+# ------------------------------------------------------------------------------
+# SAVED SCORES (SIDECAR FILES)
+# ------------------------------------------------------------------------------
+#
+# Every manuscript's scores are saved in a sidecar file, so they survive
+# restarting Sublime:
+#
+#     chapter-12.md
+#     chapter-12.md.author-tools.json
+#
+# The manuscript itself is never written to. The sidecar maps paragraph
+# hashes (see make_paragraph_hash) to scores, plus the start of each
+# paragraph so a person reading the file can tell which is which.
+#
+#     Opening a manuscript   the sidecar is read into the cache, and every
+#                            paragraph whose text is unchanged gets its mark
+#     New result             added to the sidecar, written a moment later
+#                            (the file is created by the first result)
+#     Saving the manuscript  the sidecar is pruned to the paragraphs in the
+#                            saved text; nothing else is kept
+#
+# "save_scores" puts the sidecars in Sublime's cache folder instead, or
+# switches them off. Unsaved buffers have no file, so their scores are
+# kept in memory only.
+# ------------------------------------------------------------------------------
+
+SIDECAR_SUFFIX = ".author-tools.json"
+SIDECAR_VERSION = 1
+
+# New results arrive in bursts during a scan, so they are written together.
+SIDECAR_WRITE_DELAY_MS = 2000
+
+PREVIEW_CHARACTERS = 80
+
+# SIDECARS[manuscript path] = {paragraph hash: entry}, for every manuscript
+# whose sidecar has been read this session. Guarded by CACHE_LOCK.
+SIDECARS = {}
+
+# Bumped by every scheduled or finished write, so only the latest runs.
+SIDECAR_WRITES = {}
+
+
+def sidecar_location():
+    location = get_settings().get("save_scores", "beside_manuscript")
+
+    if location in ("beside_manuscript", "sublime_cache"):
+        return location
+
+    return "off"
+
+
+def sidecar_path(file_name):
+    """
+    Where the manuscript's scores are saved, or None when switched off.
+    """
+    location = sidecar_location()
+
+    if location == "beside_manuscript":
+        return file_name + SIDECAR_SUFFIX
+
+    if location == "sublime_cache":
+        digest = hashlib.sha1(
+            os.path.abspath(file_name).encode("utf-8")
+        ).hexdigest()
+
+        return os.path.join(
+            sublime.cache_path(), PACKAGE_NAME, "scores", digest + ".json"
+        )
+
+    return None
+
+
+def sidecar_entry(text, scores):
+    preview = " ".join(text.split())
+
+    if len(preview) > PREVIEW_CHARACTERS:
+        preview = preview[:PREVIEW_CHARACTERS - 1] + "…"
+
+    return {"preview": preview, "scores": scores}
+
+
+def load_sidecar(file_name):
+    """
+    Read the manuscript's saved scores into the cache, once per session.
+    """
+    with CACHE_LOCK:
+        if file_name in SIDECARS:
+            return
+
+    path = sidecar_path(file_name)
+    entries = {}
+
+    if path and os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as sidecar:
+                data = json.load(sidecar)
+
+            if data.get("version") == SIDECAR_VERSION:
+                entries = {
+                    paragraph_hash: entry
+                    for paragraph_hash, entry in data["entries"].items()
+                    if isinstance(entry, dict)
+                    and isinstance(entry.get("scores"), dict)
+                }
+
+        except (OSError, ValueError, AttributeError, KeyError) as exc:
+            print("[Author Tools] could not read {}: {}".format(path, exc))
+
+    with CACHE_LOCK:
+        if file_name in SIDECARS:
+            return
+
+        SIDECARS[file_name] = entries
+
+        for paragraph_hash, entry in entries.items():
+            CACHE.setdefault(paragraph_hash, entry["scores"])
+
+
+def save_score(view, text, paragraph_hash, scores):
+    """
+    Add a new result to the manuscript's sidecar, and write it shortly.
+    """
+    file_name = view.file_name() if view.is_valid() else None
+
+    if not file_name or sidecar_location() == "off":
+        return
+
+    load_sidecar(file_name)
+
+    with CACHE_LOCK:
+        SIDECARS[file_name][paragraph_hash] = sidecar_entry(text, scores)
+        generation = SIDECAR_WRITES.get(file_name, 0) + 1
+        SIDECAR_WRITES[file_name] = generation
+
+    sublime.set_timeout_async(
+        lambda: write_sidecar(file_name, generation), SIDECAR_WRITE_DELAY_MS
+    )
+
+
+def write_sidecar(file_name, generation=None):
+    """
+    Write the manuscript's sidecar. With `generation`, only if no later
+    write has been scheduled or done since.
+    """
+    path = sidecar_path(file_name)
+
+    with CACHE_LOCK:
+        if generation is not None and SIDECAR_WRITES.get(file_name) != generation:
+            return
+
+        # Cancels any write still waiting: this one includes its entries.
+        SIDECAR_WRITES[file_name] = SIDECAR_WRITES.get(file_name, 0) + 1
+        entries = dict(SIDECARS.get(file_name) or {})
+
+    if path is None:
+        return
+
+    try:
+        # No scores left: remove the file rather than keep an empty one.
+        if not entries:
+            if os.path.exists(path):
+                os.remove(path)
+            return
+
+        data = {
+            "about": (
+                "Paragraph scores saved by Author Tools for {}. Safe to "
+                "delete: the scores are then requested again when needed."
+            ).format(os.path.basename(file_name)),
+            "version": SIDECAR_VERSION,
+            "entries": entries
+        }
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        # Written beside the real file and then swapped in, so a crash
+        # halfway never leaves a broken sidecar.
+        temporary = path + ".tmp"
+
+        with open(temporary, "w", encoding="utf-8") as sidecar:
+            json.dump(data, sidecar, ensure_ascii=False, indent=1)
+
+        os.replace(temporary, path)
+
+    except OSError as exc:
+        print("[Author Tools] could not save scores to {}: {}".format(path, exc))
+
+
+def analysable_paragraphs(view, namespace):
+    """
+    [(region, text, paragraph_hash), ...] for every paragraph long enough to
+    be analysed.
+    """
+    min_characters = int(get_settings().get("min_characters", 20))
+    found = []
+
+    for region in all_paragraphs(view):
+        text = clean_paragraph_text(view.substr(region))
+
+        if len(text) >= min_characters:
+            found.append((region, text, make_paragraph_hash(text, namespace)))
+
+    return found
+
+
+def prune_sidecar(view):
+    """
+    After saving: keep exactly the scores of the paragraphs in the saved
+    text. Scores of paragraphs that were edited or deleted are dropped;
+    scores of paragraphs analysed elsewhere (the same text in another
+    manuscript, or earlier this session) are added.
+    """
+    file_name = view.file_name()
+
+    if not file_name or sidecar_location() == "off":
+        return
+
+    load_sidecar(file_name)
+
+    paragraphs = analysable_paragraphs(view, request_namespace())
+
+    with CACHE_LOCK:
+        SIDECARS[file_name] = {
+            paragraph_hash: sidecar_entry(text, CACHE[paragraph_hash])
+            for _, text, paragraph_hash in paragraphs
+            if paragraph_hash in CACHE
+        }
+
+    write_sidecar(file_name)
+
+
+def restore_saved_scores(view):
+    """
+    Mark every paragraph whose current text has scores, from the sidecar or
+    from earlier this session. Runs the first time a view is used, and again
+    after enabling Author Tools.
+    """
+    get_state(view)["restored"] = True
+
+    file_name = view.file_name()
+
+    if file_name and sidecar_location() != "off":
+        load_sidecar(file_name)
+
+    found = []
+
+    with CACHE_LOCK:
+        cache = dict(CACHE)
+
+    namespace = request_namespace()
+
+    for region, _, paragraph_hash in analysable_paragraphs(view, namespace):
+        if paragraph_hash in cache:
+            found.append((region, cache[paragraph_hash]))
+
+    replace_paragraph_marks(view, found)
+
+
+def forget_all_scores():
+    """
+    Empty the cache and delete the sidecars read this session. Returns the
+    number of sidecar files deleted.
+    """
+    with CACHE_LOCK:
+        CACHE.clear()
+        file_names = list(SIDECARS)
+
+        for file_name in file_names:
+            SIDECARS[file_name] = {}
+
+    deleted = 0
+
+    for file_name in file_names:
+        path = sidecar_path(file_name)
+
+        if path and os.path.exists(path):
+            write_sidecar(file_name)
+            deleted += 1
+
+    return deleted
 
 
 # ------------------------------------------------------------------------------
@@ -2182,6 +2527,8 @@ class AuthorToolsEventListener(sublime_plugin.EventListener):
         if not plugin_enabled():
             clear_status(view)
             clear_marks(view)
+            # So enabling again redraws the saved scores.
+            remove_view_state(view)
             return
 
         get_state(view)["change_count"] = view.change_count()
@@ -2210,6 +2557,15 @@ class AuthorToolsEventListener(sublime_plugin.EventListener):
                 current_status.rstrip() + separator() + "edited" + separator()
             )
 
+    def on_post_save_async(self, view):
+        """
+        Prune the sidecar to the paragraphs in the text just saved.
+        """
+        if not plugin_enabled() or not view_is_applicable(view):
+            return
+
+        prune_sidecar(view)
+
     def on_hover(self, view, point, hover_zone):
         """
         Hovering over the margin shows the details card for the paragraph
@@ -2224,7 +2580,8 @@ class AuthorToolsEventListener(sublime_plugin.EventListener):
         show_details_popup(view, point)
 
     def on_close(self, view):
-        # Cached results survive: the same text may appear elsewhere.
+        # Cached results survive: the same text may appear elsewhere. The
+        # sidecar was pruned when the file was last saved.
         remove_view_state(view)
 
 
@@ -2366,12 +2723,30 @@ class AuthorToolsToggleParagraphTintCommand(sublime_plugin.ApplicationCommand):
 
 
 class AuthorToolsClearCacheCommand(sublime_plugin.ApplicationCommand):
+    """
+    Author Tools: Clear Cache
+
+    Forgets every score: the cache, and the sidecar files of the manuscripts
+    opened this session. Asks first, because getting them back means
+    sending every paragraph to Jev again.
+    """
 
     def run(self):
-        with CACHE_LOCK:
-            CACHE.clear()
+        if not sublime.ok_cancel_dialog(
+            "Forget all Author Tools scores?\n\n"
+            "This also deletes the saved score files of the manuscripts "
+            "opened this session. Your manuscripts are not changed.",
+            "Forget Scores"
+        ):
+            return
 
-        sublime.status_message("Author Tools cache cleared")
+        deleted = forget_all_scores()
+
+        sublime.status_message(
+            "Author Tools cache cleared ({} saved score file{} deleted)".format(
+                deleted, "" if deleted == 1 else "s"
+            )
+        )
 
 
 class AuthorToolsToggleCommand(sublime_plugin.ApplicationCommand):

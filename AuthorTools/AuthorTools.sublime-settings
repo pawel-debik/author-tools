@@ -24,8 +24,9 @@
 
     // With text selected, "Author Tools: Scan Paragraph with Jev" sends each
     // paragraph in the selection to Jev, one after the other, and marks each
-    // one. Paragraphs already analysed in their current form come from the
-    // cache. Selections touching more paragraphs than this are not scanned.
+    // one. Every paragraph is sent, even one analysed before, so scanning
+    // also refreshes results. Selections touching more paragraphs than this
+    // are not scanned.
     "max_scan_paragraphs": 30,
 
     // Set to true to also analyse a selection automatically, as one piece of
@@ -41,6 +42,27 @@
     // How long the caret must rest in a new paragraph before a request is
     // sent. Cached paragraphs are shown immediately regardless.
     "delay_ms": 400,
+
+
+    // -------------------------------------------------------------------------
+    // SAVED SCORES
+    // -------------------------------------------------------------------------
+
+    // Scores are saved per manuscript, so they survive restarting Sublime.
+    // The manuscript itself is never changed.
+    //
+    // "beside_manuscript"  chapter-12.md.author-tools.json next to
+    //                      chapter-12.md, so the scores travel with it
+    //                      (Dropbox, iCloud, Git, another computer)
+    // "sublime_cache"      in Sublime's cache folder, keeping your story
+    //                      folder clean; scores are lost if the manuscript
+    //                      is moved or renamed
+    // "off"                in memory only, until Sublime quits
+    //
+    // The file is created by the first result, and pruned every time you
+    // save the manuscript: scores of edited or deleted paragraphs are
+    // dropped.
+    "save_scores": "beside_manuscript",
 
 
     // -------------------------------------------------------------------------

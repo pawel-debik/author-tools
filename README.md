@@ -52,22 +52,96 @@ usual Sublime meaning.
 - Selecting text sends nothing to Jev; the status bar keeps showing the
   paragraph the selection starts in. "Author Tools: Scan Paragraph with
   Jev" with text selected sends each paragraph in the selection to Jev, one
-  after the other ("scanning 3 of 12…"), and marks each one. Paragraphs
-  already analysed in their current form come from the cache. Up to
-  `max_scan_paragraphs` (30) at once; scanning again stops a scan.
+  after the other ("scanning 3 of 12…"), and marks each one. Every
+  paragraph is sent, even one analysed before, so scanning is also how you
+  refresh a result that looks wrong. Up to `max_scan_paragraphs` (30) at
+  once; scanning again stops a scan.
 - `analyse_selections: true` brings back automatic analysis of a selection
   as one piece of text ("KAV (selection)", also in the details card when
   hovering beside it), up to `max_selection_characters`. It doesn't change
   the margin marks.
 - Paragraphs are separated by blank lines. Markdown heading lines are ignored.
 - Only `.md` / `.markdown` files (and unsaved Markdown buffers) are analysed.
-- Results are cached in RAM by SHA-1 of the paragraph text. Editing a
-  paragraph changes its hash; it is re-analysed the next time you enter it,
-  or immediately via "Author Tools: Scan Paragraph with Jev".
+- Results are remembered by SHA-1 of the paragraph text, and saved beside
+  the manuscript (see [Saved scores](#saved-scores)). Editing a paragraph
+  changes its hash; it is re-analysed the next time you enter it, or
+  immediately via "Author Tools: Scan Paragraph with Jev".
 - `edited` in the status bar means the results describe the paragraph
   before your latest edit.
 - "Author Tools: Enable / Disable Analysis" switches the analysis off; the
   word reports keep working.
+
+## Saved scores
+
+Scores are saved in a file next to the manuscript, so they are still there
+after restarting Sublime and you don't pay for the same paragraph twice:
+
+```
+My Novel/
+├── chapter-12.md
+└── chapter-12.md.author-tools.json
+```
+
+**Your manuscript is never changed.** The marks, colours and status bar
+are drawn over the text by Sublime; nothing is written into the `.md` file.
+
+### Setup
+
+None: it is on by default. Optionally, choose where the files go in
+"Preferences: Author Tools Settings":
+
+```jsonc
+{
+    "api_key": "sk-or-...",
+    // "beside_manuscript" (default), "sublime_cache" or "off"
+    "save_scores": "beside_manuscript"
+}
+```
+
+- `"beside_manuscript"`: the scores travel with the manuscript, through
+  Dropbox, iCloud, Git or to another computer.
+- `"sublime_cache"`: in Sublime's own cache folder, keeping your story
+  folder clean. The scores are lost if you move or rename the manuscript.
+- `"off"`: in memory only, until Sublime quits (the old behaviour).
+
+If your novel is in Git, either commit the `.author-tools.json` files (the
+scores come along to other computers) or add this line to `.gitignore`:
+
+```
+*.author-tools.json
+```
+
+### What happens automatically
+
+- **Opening a manuscript** reads its saved scores. Every paragraph whose
+  text is exactly as it was when analysed gets its mark back straight away,
+  without a request. Changed paragraphs get none until they are analysed
+  again.
+- **A new result** (entering a paragraph, or a scan) is added to the file a
+  couple of seconds later. The first result creates the file; files you
+  never analyse get none.
+- **Saving the manuscript** prunes the file to the paragraphs in the saved
+  text. Scores of paragraphs you edited or deleted are dropped for good; no
+  older versions are kept. When nothing is left, the file is deleted.
+- **Scanning** ("Author Tools: Scan Paragraph with Jev", with or without a
+  selection) always asks Jev again and replaces the saved score. Moving
+  the caret into a paragraph uses the saved score when there is one.
+- Scores are matched by the paragraph's exact text and by the question
+  sent to Jev. Changing the `model`, the `moods`, or switching a
+  measurement on or off means the saved scores no longer match; they are
+  requested again as you go, and the old ones are dropped at the next save.
+- Enabling Author Tools again redraws the saved scores.
+
+Good to know:
+
+- Unsaved (untitled) buffers have no file, so their scores are kept in
+  memory only. Once saved, their scores go into a new file.
+- Renaming or moving the manuscript outside Sublime leaves the
+  `.author-tools.json` file behind: rename or move it too. "Save As" in
+  Sublime starts a file under the new name.
+- The file is safe to delete; the scores are then requested again when
+  needed. "Author Tools: Clear Cache" forgets all scores and deletes the
+  files of the manuscripts opened this session (it asks first).
 
 ## Word reports
 
