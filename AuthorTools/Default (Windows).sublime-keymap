@@ -34,6 +34,16 @@
         ]
     },
 
+    // Author Tools: Toggle Paragraph Tint. Replaces Sublime's "Reopen
+    // Closed File" in Markdown.
+    {
+        "keys": ["ctrl+shift+t"],
+        "command": "author_tools_toggle_paragraph_tint",
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "text.html.markdown" }
+        ]
+    },
+
     // Author Tools: Enable / Disable Analysis.
     {
         "keys": ["ctrl+shift+0"],

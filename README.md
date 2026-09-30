@@ -11,6 +11,7 @@ Markdown.
 | `cmd+shift+1` | `ctrl+shift+1` | Author Tools: Toggle Colours            | Colours on or off                         |
 | `cmd+shift+2` | `ctrl+shift+2` | Author Tools: Colour Marks By…          | Next colour mode (the command lists them) |
 | `cmd+shift+A` | `ctrl+shift+A` | Author Tools: Scan Paragraph with Jev   | Scan the paragraph, or each selected one  |
+| `cmd+shift+T` | `ctrl+shift+T` | Author Tools: Toggle Paragraph Tint     | Paragraph tint on or off                  |
 
 The shortcuts only work in Markdown files; elsewhere the keys keep their
 usual Sublime meaning.
