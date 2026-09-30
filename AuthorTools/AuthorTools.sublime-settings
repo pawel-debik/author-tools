@@ -189,8 +189,10 @@
 
     // What the mark colours (and the paragraph's tint in the minimap) show:
     // "senses" (the dominant sense), "mood", "tension", "showing",
-    // "thisness" or "telescoping". Switch with "Author Tools: Colour Marks By…"; no new
-    // requests are needed. The ▲/▼ shapes show telescoping in every mode.
+    // "thisness", "telescoping" or "structure" (the scene structure, see
+    // SCENE STRUCTURE below, instead of Jev's marks). Switch with "Author
+    // Tools: Colour Marks By…"; no new requests are needed. The ▲/▼ shapes
+    // show telescoping in every mode but "structure".
     //
     // To cycle through the modes with a key, add this to your key bindings:
     //     { "keys": ["ctrl+alt+m"], "command": "author_tools_colour_marks_by",
@@ -324,5 +326,65 @@
     // Replaces the built-in instructions (stay in character, first person, be
     // honest, no stage directions, keep it short). {name} becomes the
     // character's name. Empty uses the built-in ones.
-    "character_instructions": ""
+    "character_instructions": "",
+
+
+    // -------------------------------------------------------------------------
+    // SCENE STRUCTURE (STORY GRID)
+    // -------------------------------------------------------------------------
+
+    // "Author Tools: Analyse Scene Structure" sends the chapter (or the
+    // selected paragraphs) to this model, which splits it into scenes and
+    // finds each scene's Five Commandments. Any OpenRouter chat model; uses
+    // the same api_key as above. Free models (ending in ":free") may log
+    // what you send: check the provider's policy in your OpenRouter
+    // privacy settings.
+    "structure_endpoint": "https://openrouter.ai/api/v1/chat/completions",
+    "structure_model": "openai/gpt-6-luna",
+
+    // Only these OpenRouter providers, in this order, and never another:
+    // "azure/eu" keeps the chapter on Azure's servers in the EU. The tags
+    // for a model are under "Providers" on its OpenRouter page, or at
+    // https://openrouter.ai/api/v1/models/<model>/endpoints. [] lets
+    // OpenRouter choose.
+    "structure_providers": ["azure/eu"],
+
+    // Lower keeps the scenes and pivots the same from one analysis to the
+    // next. null uses the model's default; GPT-6 Luna accepts nothing else.
+    "structure_temperature": null,
+
+    // For models that reason: "low", "medium" or "high". More is slower,
+    // and may find subtler turns. "" leaves it to the model.
+    "structure_reasoning_effort": "medium",
+
+    // Reasoning over a whole chapter takes a while, longer on free models.
+    "structure_timeout_seconds": 300,
+
+    // Longer texts are not sent; select one chapter instead. 80,000
+    // characters is roughly 14,000 words.
+    "structure_max_characters": 80000,
+
+    // Shown in the "Scene structure" colour mode, the last stop of "Colour
+    // Marks By…" (cmd+shift+2), in place of Jev's marks. Analysing switches
+    // to it.
+    //
+    // Inciting incident, turning point, crisis and climax outline their
+    // paragraph and get this gutter icon ("dot", "circle", "bookmark" or
+    // any icon path); complications and resolution tint their span.
+    // "scene" colours the scene labels.
+    "structure_gutter_icon": "bookmark",
+    "structure_scopes": {
+        "scene": "comment",
+        "inciting_incident": "region.yellowish",
+        "progressive_complications": "region.orangish",
+        "turning_point": "region.redish",
+        "crisis": "region.purplish",
+        "climax": "region.pinkish",
+        "resolution": "region.greenish"
+    },
+
+    // Replaces the built-in Story Grid instructions. They must still ask for
+    // the same JSON answer; see DEFAULT_INSTRUCTIONS in StoryStructure.py.
+    // Empty uses the built-in ones.
+    "structure_instructions": ""
 }

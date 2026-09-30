@@ -966,8 +966,13 @@ ZOOM_ICONS = {
 PACKAGE_NAME = __package__ or "AuthorTools"
 
 # Also the order of "Colour Marks By…" and of cycling with {"mode": "next"}.
+# "structure" is drawn by StoryStructure.py: in that mode Jev's marks are
+# hidden, and the scene structure takes the gutter and the text.
+STRUCTURE_MODE = "structure"
+
 COLOUR_MODES = (
-    "senses", "mood", "tension", "showing", "thisness", "telescoping"
+    "senses", "mood", "tension", "showing", "thisness", "telescoping",
+    STRUCTURE_MODE
 )
 
 COLOUR_MODE_NAMES = {
@@ -976,7 +981,8 @@ COLOUR_MODE_NAMES = {
     "tension": "Tension",
     "showing": "Showing vs telling",
     "thisness": "Thisness",
-    "telescoping": "Telescoping"
+    "telescoping": "Telescoping",
+    "structure": "Scene structure"
 }
 
 # For the status bar: "Colours: KAV".
@@ -986,7 +992,8 @@ COLOUR_MODE_SHORT_NAMES = {
     "tension": "Tension",
     "showing": "Showing",
     "thisness": "Thisness",
-    "telescoping": "Telescoping"
+    "telescoping": "Telescoping",
+    "structure": "Structure"
 }
 
 # The modes coloured by a 0-4 score, with that score's key and the words
@@ -1117,6 +1124,9 @@ def mark_scope(scores, mode, settings):
     """
     The colour for a paragraph in this mode, or None for no mark.
     """
+    if mode == STRUCTURE_MODE:
+        return None
+
     if mode == "senses":
         dominant = dominant_sense(scores)
         return sense_scopes(settings).get(dominant) if dominant else None
@@ -1146,6 +1156,11 @@ def colour_legend(mode):
     e.g. "red kinetic, blue audio, purple visual, orange scent".
     """
     settings = get_settings()
+
+    if mode == STRUCTURE_MODE:
+        # Imported here: StoryStructure imports this module.
+        from .StoryStructure import structure_legend
+        return structure_legend()
 
     if mode == "senses":
         scopes = sense_scopes(settings)
@@ -1334,9 +1349,10 @@ def colour_status(settings):
     if not settings.get("show_gutter_marks", True):
         return "Colours: off" + separator()
 
-    text = "Colours: " + COLOUR_MODE_SHORT_NAMES[colour_mode()]
+    mode = colour_mode()
+    text = "Colours: " + COLOUR_MODE_SHORT_NAMES[mode]
 
-    if settings.get("paragraph_tint", False):
+    if settings.get("paragraph_tint", False) and mode != STRUCTURE_MODE:
         text += " + tint"
 
     return text + separator()
@@ -2575,6 +2591,10 @@ class AuthorToolsEventListener(sublime_plugin.EventListener):
             return
 
         if not plugin_enabled() or not view_is_applicable(view):
+            return
+
+        # The gutter belongs to the scene structure then (StoryStructure.py).
+        if colour_mode() == STRUCTURE_MODE:
             return
 
         show_details_popup(view, point)

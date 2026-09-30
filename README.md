@@ -40,7 +40,8 @@ usual Sublime meaning.
   the `moods` setting. Turn off with `show_mood`.
 - "Author Tools: Colour Marks By…" switches what the mark colours (and the
   minimap tint) show: dominant sense, mood, tension, showing, thisness,
-  or telescoping. Nothing is re-analysed; the status bar shows the colour key,
+  telescoping, or the [scene structure](#scene-structure) instead of these
+  marks. Nothing is re-analysed; the status bar shows the colour key,
   and afterwards the current mode ("Colours: KAV"). "Author Tools: Toggle
   Colours" hides or shows all the colours. Colours are in `mark_scopes`,
   `mood_scopes` and `scale_scopes`.
@@ -254,6 +255,63 @@ What has happened, who is where, and what's at stake right now.
 Answers come from `character_model` (DeepSeek V4.1 Flash by default) through
 OpenRouter's chat endpoint, with the same API key. This works even when the
 analysis is disabled.
+
+## Scene structure
+
+Story Grid's Five Commandments for each scene in a chapter, drawn over the
+text.
+
+1. Open the chapter (or select its paragraphs, in a file with several).
+2. Run "Author Tools: Analyse Scene Structure". The status bar shows
+   "Structure: analysing 64 paragraphs…"; a free reasoning model can take a
+   minute or two.
+
+The model splits the chapter into scenes, and for each scene finds:
+
+| Commandment               | Drawn as                               |
+|---------------------------|----------------------------------------|
+| Inciting incident         | paragraph outlined yellow, gutter icon |
+| Progressive complications | span tinted orange                     |
+| Turning point             | paragraph outlined red, gutter icon    |
+| Crisis                    | paragraph outlined purple, gutter icon |
+| Climax                    | paragraph outlined pink, gutter icon   |
+| Resolution                | span tinted green                      |
+
+and the value that shifts across the scene. Labels on the right name each
+pivot ("Turning point", "Climax (weak)"), and the first paragraph of every
+scene says how it turns: "Scene 2 · safety + → − · no crisis". A scene
+with no shift, or with a missing commandment, is worth a second look.
+
+The structure is the last colour mode: cmd+shift+2 cycles KAV, mood,
+tension, showing, thisness, telescoping, then **Structure**, which hides
+Jev's marks while it is shown. Analysing switches to it. cmd+shift+1
+(Toggle Colours) hides it along with the rest.
+
+- Hover over the gutter for what that paragraph does in its scene and why
+  ("Turning point P6 · revelation: Mara finds the letter is forged; the
+  plan can't work"), with the scene's value shift below it.
+- Click a label or the scene in the hover card, or run "Author Tools: Show
+  Scene Structure", for the whole scene's card: what the protagonist
+  wants, the value shift, and one sentence of reasoning per commandment,
+  with links to the paragraphs. Outside any scene it lists all scenes.
+- The model's answer is checked: paragraph numbers that don't exist,
+  pivots outside their scene or out of order, and quoted opening words
+  that belong to another paragraph (the number is then corrected). The card
+  shows what was changed, after ⚠.
+- Only sent when you ask; nothing is sent while you write. Editing the text
+  never re-analyses it: the scene's label says "edited", and the card how
+  many paragraphs changed. Analyse again to refresh it.
+- Saved beside the manuscript as `chapter-12.md.structure.author-tools.json`
+  (or wherever `save_scores` says), and restored when the file is opened,
+  even after edits. "Author Tools: Clear Scene Structure" forgets it.
+- The model is `openai/gpt-6-luna`, only on Azure's EU servers
+  (`structure_providers`: `["azure/eu"]`), so the chapter stays in the EU;
+  if that provider is down, the analysis fails rather than going
+  elsewhere. Change `structure_model` for any other OpenRouter chat model,
+  and `structure_providers` to its provider tags, or `[]` for any. Free
+  models have daily and per-minute limits, and some providers log what you
+  send: check your OpenRouter privacy settings before sending unpublished
+  work.
 
 ## API key
 

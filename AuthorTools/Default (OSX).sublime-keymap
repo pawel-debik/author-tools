@@ -23,7 +23,7 @@
     },
 
     // Cycle through the colour modes: KAV, mood, tension, showing,
-    // thisness, telescoping.
+    // thisness, telescoping, scene structure.
     {
         "keys": ["super+shift+2"],
         "command": "author_tools_colour_marks_by",

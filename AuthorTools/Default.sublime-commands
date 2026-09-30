@@ -36,6 +36,18 @@
         "command": "author_tools_character_follow_up"
     },
     {
+        "caption": "Author Tools: Analyse Scene Structure",
+        "command": "author_tools_analyse_structure"
+    },
+    {
+        "caption": "Author Tools: Show Scene Structure",
+        "command": "author_tools_show_structure"
+    },
+    {
+        "caption": "Author Tools: Clear Scene Structure",
+        "command": "author_tools_clear_structure"
+    },
+    {
         "caption": "Author Tools: Clear Cache",
         "command": "author_tools_clear_cache"
     },
