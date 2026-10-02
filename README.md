@@ -204,6 +204,9 @@ My Novel/
 ├── story_so_far.md        (optional)
 └── characters/
     ├── character1.md
+    ├── character1.png         (optional portrait)
+    ├── character1.happy.png   (optional, one per mood)
+    ├── character1.angry.png
     └── character2.md
 ```
 
@@ -243,6 +246,17 @@ Only what has happened up to chapter 1. They don't know that ...
 "A line of dialogue in their voice."
 "Another one."
 ```
+
+### Portraits
+
+An image beside a character file with the same name (`character1.png`,
+`.jpg` or `.gif`) is shown in the reply popup. Add one image per mood as
+`character1.<mood>.png`, using any word you like: `happy`, `sad`, `angry`,
+`tired`, `suspicious`… The character then picks one of those moods for each
+answer, and the popup shows that portrait. When the mood has no image, the
+default `character1.png` is shown; without that, no portrait. Square images
+work best; set the size with `character_portrait_size` (96 pixels by
+default).
 
 ### Story so far (`story_so_far.md`)
 

@@ -7,6 +7,7 @@ import os
 import re
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from .ProseAnalysis import get_api_key
@@ -27,6 +28,17 @@ from .ProseAnalysis import get_api_key
 # aliases, then free prose), and optionally a story_so_far.md that tells
 # every character where the story stands. Without story_folder, the example
 # folder in this package is used; without either, the commands are hidden.
+#
+# Portraits sit beside the character file, with the same name:
+#
+#     Mara Voss.md
+#     Mara Voss.png            the default portrait
+#     Mara Voss.happy.png      one per mood, any word you like
+#     Mara Voss.angry.jpg
+#
+# When there are mood portraits, the character is asked to end each answer
+# with one of those moods, and the popup shows the matching portrait (or the
+# default one when the mood is missing or has no portrait).
 #
 # This is separate from the paragraph analysis: it uses OpenRouter's normal
 # chat endpoint and a chat model, and shares only the API key.
@@ -52,6 +64,20 @@ CHARACTERS_FOLDER = "characters"
 STORY_SO_FAR_FILE = "story_so_far.md"
 
 CHARACTER_EXTENSIONS = (".md", ".markdown", ".txt")
+
+# What minihtml can show.
+PORTRAIT_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif")
+
+# The line the character ends an answer with, when there are mood portraits.
+MOOD_RE = re.compile(r"^[ \t]*\[mood:[ \t]*([^\]\n]*)\][ \t]*$\n?", re.I | re.M)
+
+MOOD_INSTRUCTIONS = """\
+# Your mood
+
+End every answer with one more line that says how you feel while giving it, \
+as exactly one of these words: {moods}. Write it like this, on its own line:
+
+[mood: {example}]"""
 
 OWN_QUESTION = "Type your own question…"
 
@@ -189,7 +215,46 @@ def read_character(path):
                     if alias.strip()
                 ]
 
-    return {"name": name, "aliases": aliases, "profile": text.strip()}
+    default_portrait, portraits = find_portraits(path)
+
+    return {
+        "name": name,
+        "aliases": aliases,
+        "profile": text.strip(),
+        "portrait": default_portrait,
+        "portraits": portraits
+    }
+
+
+def find_portraits(path):
+    """
+    The default portrait (or None) and {mood: path} for the images beside
+    the character file that share its name: "Mara Voss.png" and
+    "Mara Voss.happy.png" for "Mara Voss.md".
+    """
+    folder = os.path.dirname(path)
+    stem = os.path.splitext(os.path.basename(path))[0].lower()
+    default_portrait = None
+    portraits = {}
+
+    for entry in sorted(os.listdir(folder), key=str.lower):
+        base, extension = os.path.splitext(entry)
+
+        if extension.lower() not in PORTRAIT_EXTENSIONS:
+            continue
+
+        base = base.lower()
+        image = os.path.join(folder, entry)
+
+        if base == stem:
+            default_portrait = default_portrait or image
+        elif base.startswith(stem + "."):
+            mood = base[len(stem) + 1:].strip()
+
+            if mood:
+                portraits.setdefault(mood, image)
+
+    return default_portrait, portraits
 
 
 def load_characters(folder):
@@ -241,7 +306,30 @@ def build_system_prompt(character, story_so_far):
     if story_so_far:
         parts.append("# Your story so far\n\n" + story_so_far)
 
+    moods = sorted(character["portraits"])
+
+    if moods:
+        parts.append(MOOD_INSTRUCTIONS.format(moods=", ".join(moods), example=moods[0]))
+
     return "\n\n".join(parts)
+
+
+def split_mood(reply):
+    """
+    The answer without its [mood: ...] line, and the mood (lowercase, or ""
+    when there is none). The last mood line wins.
+    """
+    moods = MOOD_RE.findall(reply)
+    text = MOOD_RE.sub("", reply).strip()
+
+    return text, (moods[-1].strip().lower() if moods else "")
+
+
+def portrait_for(character, mood):
+    """
+    The portrait for the mood, else the default portrait, else None.
+    """
+    return character["portraits"].get(mood) or character["portrait"]
 
 
 def build_first_question(passage, question):
@@ -375,8 +463,11 @@ def send(window, view, question_text, passage=None):
             ))
             return
 
+        # The history keeps the mood line, so the character keeps adding it.
         interview["messages"].append({"role": "assistant", "content": reply})
-        show_reply(window, view, point, name, question_text, reply, passage)
+        text, mood = split_mood(reply)
+        portrait = portrait_for(interview["character"], mood)
+        show_reply(window, view, point, name, question_text, text, passage, portrait)
 
     threading.Thread(target=worker, daemon=True).start()
 
@@ -394,17 +485,30 @@ def display_modes():
     return modes
 
 
-def show_reply(window, view, point, name, question, reply, passage):
+def show_reply(window, view, point, name, question, reply, passage, portrait):
     modes = display_modes()
 
     if "tab" in modes:
         append_to_interview(window, view, name, question, reply, passage)
 
     if "popup" in modes and view.is_valid():
-        show_popup(view, point, name, question, reply)
+        show_popup(view, point, name, question, reply, portrait)
 
 
-def show_popup(view, point, name, question, reply):
+def portrait_html(portrait):
+    if not portrait or not os.path.isfile(portrait):
+        return ""
+
+    size = int(get_settings().get("character_portrait_size", 96))
+    # file:///C:/... on Windows, file:///Users/... elsewhere.
+    url = "file:///" + urllib.parse.quote(portrait.replace("\\", "/").lstrip("/"), safe="/:")
+
+    return '<div class="portrait"><img src="{}" width="{}" height="{}"></div>'.format(
+        html.escape(url, quote=True), size, size
+    )
+
+
+def show_popup(view, point, name, question, reply, portrait):
     paragraphs = "".join(
         "<p>{}</p>".format(html.escape(paragraph.strip()).replace("\n", "<br>"))
         for paragraph in re.split(r"\n\s*\n", reply)
@@ -418,13 +522,16 @@ def show_popup(view, point, name, question, reply):
     .question {{ color: color(var(--foreground) alpha(0.6)); font-style: italic; }}
     .name {{ font-weight: bold; margin-top: 0.5rem; }}
     p {{ margin: 0.4rem 0 0 0; }}
+    .portrait {{ margin-top: 0.5rem; }}
 </style>
 <div class="question">{question}</div>
+{portrait}
 <div class="name">{name}</div>
 {paragraphs}
 </body>
 """.format(
         question=html.escape(question),
+        portrait=portrait_html(portrait),
         name=html.escape(name),
         paragraphs=paragraphs
     )

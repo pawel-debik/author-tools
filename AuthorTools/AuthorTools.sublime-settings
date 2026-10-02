@@ -311,6 +311,13 @@
     // manuscript that keeps the whole conversation).
     "character_reply_display": ["popup", "tab"],
 
+    // Portraits in the popup, in pixels (square). Put images beside the
+    // character file with the same name: "Mara Voss.png" is the default,
+    // "Mara Voss.happy.png", "Mara Voss.angry.png", ... one per mood. The
+    // character picks a mood from those for each answer; a missing mood falls
+    // back to the default portrait, and without one no portrait is shown.
+    "character_portrait_size": 96,
+
     // Any OpenRouter chat model. Uses the same api_key as above.
     "character_endpoint": "https://openrouter.ai/api/v1/chat/completions",
     "character_model": "deepseek/deepseek-v4.1-flash",
