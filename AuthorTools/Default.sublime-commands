@@ -1,6 +1,6 @@
 [
     {
-        "caption": "Author Tools: Scan Paragraph with Jev",
+        "caption": "Author Tools: Scan Paragraph",
         "command": "author_tools_analyse_current_paragraph"
     },
     {

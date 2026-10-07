@@ -10,7 +10,7 @@ Markdown.
 | `cmd+shift+0` | `ctrl+shift+0` | Author Tools: Enable / Disable Analysis | Author Tools on or off                    |
 | `cmd+shift+1` | `ctrl+shift+1` | Author Tools: Toggle Colours            | Colours on or off                         |
 | `cmd+shift+2` | `ctrl+shift+2` | Author Tools: Colour Marks By…          | Next colour mode (the command lists them) |
-| `cmd+shift+A` | `ctrl+shift+A` | Author Tools: Scan Paragraph with Jev   | Scan the paragraph, or each selected one  |
+| `cmd+shift+A` | `ctrl+shift+A` | Author Tools: Scan Paragraph            | Scan the paragraph, or each selected one  |
 | `cmd+shift+T` | `ctrl+shift+T` | Author Tools: Toggle Paragraph Tint     | Paragraph tint on or off                  |
 
 The shortcuts only work in Markdown files; elsewhere the keys keep their
@@ -19,7 +19,8 @@ usual Sublime meaning.
 
 ## Paragraph analysis
 
-- Jev rates each sense separately from 0 (absent) to 4 (dominant); the
+- Jev (or [GPT-6 Luna Decisions](#choosing-the-model)) rates each sense
+  separately from 0 (absent) to 4 (dominant); the
   bars are each sense's share of the total. Categories keep a fixed
   order. Near-zero totals show "little sensory content".
 - Analyses a paragraph when the caret *enters* it and rests there for
@@ -52,8 +53,8 @@ usual Sublime meaning.
   with the word count, all scores, and echoes (words repeated close
   together, counted locally).
 - Selecting text sends nothing to Jev; the status bar keeps showing the
-  paragraph the selection starts in. "Author Tools: Scan Paragraph with
-  Jev" with text selected sends each paragraph in the selection to Jev, one
+  paragraph the selection starts in. "Author Tools: Scan Paragraph" with
+  text selected sends each paragraph in the selection to Jev, one
   after the other ("scanning 3 of 12…"), and marks each one. Every
   paragraph is sent, even one analysed before, so scanning is also how you
   refresh a result that looks wrong. Up to `max_scan_paragraphs` (30) at
@@ -67,11 +68,42 @@ usual Sublime meaning.
 - Results are remembered by SHA-1 of the paragraph text, and saved beside
   the manuscript (see [Saved scores](#saved-scores)). Editing a paragraph
   changes its hash; it is re-analysed the next time you enter it, or
-  immediately via "Author Tools: Scan Paragraph with Jev".
+  immediately via "Author Tools: Scan Paragraph".
 - `edited` in the status bar means the results describe the paragraph
   before your latest edit.
 - "Author Tools: Enable / Disable Analysis" switches the analysis off; the
   word reports keep working.
+
+### Choosing the model
+
+Paragraphs are rated by TypeSafe's Jev unless you choose OpenAI's GPT-6
+Luna Decisions. Set `model` in "Preferences: Author Tools Settings", next
+to your API key:
+
+```jsonc
+{
+    "api_key": "sk-or-...",
+    "model": "luna"    // or "jev" (the default)
+}
+```
+
+| `model`  | Model                                    | Price per paragraph¹ |
+|----------|------------------------------------------|----------------------|
+| `"jev"`  | `typesafe/jev-1.13`                      | about $0.00006       |
+| `"luna"` | `openai/gpt-6-luna-decisions`            | about $0.00017       |
+
+¹ Measured on a 100-word paragraph with every measurement on, October
+2026. A 300-page novel is roughly 3,000 paragraphs: about $0.20 with Jev,
+$0.50 with Luna.
+
+Both are equally quick (well under a second) and answer the same
+questions, so everything above works the same. Their scores differ a little,
+and so do their moods now and then: compare a few paragraphs before
+switching a whole manuscript. The full id of any other OpenRouter Decisions
+model works too.
+
+Saved scores belong to the model that made them. After switching, each
+paragraph is rated again when you enter it or scan it.
 
 ## Saved scores
 
@@ -125,11 +157,11 @@ scores come along to other computers) or add this line to `.gitignore`:
 - **Saving the manuscript** prunes the file to the paragraphs in the saved
   text. Scores of paragraphs you edited or deleted are dropped for good; no
   older versions are kept. When nothing is left, the file is deleted.
-- **Scanning** ("Author Tools: Scan Paragraph with Jev", with or without a
-  selection) always asks Jev again and replaces the saved score. Moving
+- **Scanning** ("Author Tools: Scan Paragraph", with or without a
+  selection) always asks the model again and replaces the saved score. Moving
   the caret into a paragraph uses the saved score when there is one.
 - Scores are matched by the paragraph's exact text and by the question
-  sent to Jev. Changing the `model`, the `moods`, or switching a
+  sent. Changing the `model`, the `moods`, or switching a
   measurement on or off means the saved scores no longer match; they are
   requested again as you go, and the old ones are dropped at the next save.
 - Enabling Author Tools again redraws the saved scores.
@@ -332,6 +364,9 @@ Jev's marks while it is shown. Analysing switches to it. cmd+shift+1
 Open "Preferences: Author Tools Settings" and set:
 
     "api_key": "sk-or-..."
+
+The same key works for every model, including `"model": "luna"` (see
+[Choosing the model](#choosing-the-model)).
 
 Your key then lives in `Packages/User/`, outside this folder. All settings,
 including the word reports', are in that one file.

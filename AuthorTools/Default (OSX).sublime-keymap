@@ -3,7 +3,7 @@
     // Rebind them in your own key bindings (Preferences -> Key Bindings)
     // with the same commands.
 
-    // Author Tools: Scan Paragraph with Jev. Replaces Sublime's "Expand
+    // Author Tools: Scan Paragraph. Replaces Sublime's "Expand
     // Selection" (smart) in Markdown.
     {
         "keys": ["super+shift+a"],

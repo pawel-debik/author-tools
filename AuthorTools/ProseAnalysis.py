@@ -29,6 +29,14 @@ COLOUR_STATUS_KEY = "zy_author_tools_colours"
 DEFAULT_ENDPOINT = "https://openrouter.ai/api/alpha/decisions"
 DEFAULT_MODEL = "typesafe/jev-1.13"
 
+# Short names for "model" in the settings. Each is pinned to one version so
+# behaviour doesn't silently change underneath us. Any other value is used
+# as an OpenRouter model id, as long as it is a Decisions model.
+MODEL_ALIASES = {
+    "jev": "typesafe/jev-1.13",
+    "luna": "openai/gpt-6-luna-decisions"
+}
+
 # The value shipped in the default settings. Treated as "no key configured".
 API_KEY_PLACEHOLDER = "YOUR_OPENROUTER_API_KEY"
 
@@ -139,6 +147,22 @@ def get_api_key():
         return key
 
     return os.environ.get("OPENROUTER_API_KEY", "").strip()
+
+
+def get_model():
+    """
+    The OpenRouter model id from the "model" setting, with short names
+    ("jev", "luna") resolved, so "jev" and "typesafe/jev-1.13" share their
+    saved scores.
+    """
+    model = get_settings().get("model", DEFAULT_MODEL)
+
+    if not isinstance(model, str) or not model.strip():
+        return DEFAULT_MODEL
+
+    model = model.strip()
+
+    return MODEL_ALIASES.get(model.lower(), model)
 
 
 def view_is_applicable(view):
@@ -293,7 +317,7 @@ def request_namespace():
     question.
     """
     return json.dumps(
-        build_request_payload("", get_settings().get("model", DEFAULT_MODEL)),
+        build_request_payload("", get_model()),
         sort_keys=True
     )
 
@@ -559,7 +583,7 @@ def build_request_payload(paragraph, model):
 
 def fetch_openrouter(paragraph, config):
     """
-    Send one paragraph to OpenRouter/Jev using only the standard library.
+    Send one paragraph to OpenRouter (Jev, or another Decisions model) using only the standard library.
     """
     if not config["api_key"]:
         raise RuntimeError(
@@ -612,7 +636,8 @@ def fetch_openrouter(paragraph, config):
         )
 
     # --------------------------------------------------------------------------
-    # EXPECTED RESPONSE (verified against typesafe/jev-1.13, September 2026)
+    # EXPECTED RESPONSE (verified against typesafe/jev-1.13, September 2026,
+    # and openai/gpt-6-luna-decisions, October 2026)
     # --------------------------------------------------------------------------
     #
     # {
@@ -628,7 +653,7 @@ def fetch_openrouter(paragraph, config):
     #     }
     # }
     #
-    # Every level is validated. We never fabricate scores if Jev does not
+    # Every level is validated. We never fabricate scores if the model does not
     # return them; use "Author Tools: Show Last Raw Response" to inspect what
     # actually came back.
     # --------------------------------------------------------------------------
@@ -636,7 +661,11 @@ def fetch_openrouter(paragraph, config):
     answers = data.get("answers") if isinstance(data, dict) else None
 
     if not isinstance(answers, dict):
-        raise RuntimeError("Unexpected Jev response: no 'answers' object.")
+        raise RuntimeError(
+            "Unexpected answer from {}: no 'answers' object.".format(
+                config["model"]
+            )
+        )
 
     scores = {}
 
@@ -645,14 +674,18 @@ def fetch_openrouter(paragraph, config):
 
         if not isinstance(answer, dict) or "score" not in answer:
             raise RuntimeError(
-                "Unexpected Jev response: no score for '{}'.".format(label)
+                "Unexpected answer from {}: no score for '{}'.".format(
+                    config["model"], label
+                )
             )
 
         try:
             value = float(answer["score"])
         except (TypeError, ValueError):
             raise RuntimeError(
-                "Jev returned a non-numeric score for '{}'.".format(label)
+                "{} returned a non-numeric score for '{}'.".format(
+                    config["model"], label
+                )
             )
 
         scores[label] = max(0.0, min(SCORE_MAX, value))
@@ -695,7 +728,7 @@ def read_request_config():
     return {
         "api_key": get_api_key(),
         "endpoint": settings.get("endpoint", DEFAULT_ENDPOINT),
-        "model": settings.get("model", DEFAULT_MODEL),
+        "model": get_model(),
         "timeout_seconds": float(settings.get("timeout_seconds", 15)),
         "extra_questions": enabled_extra_questions(),
         "moods": list(mood_options()) if mood_enabled() else []
@@ -1972,7 +2005,7 @@ def finish_analysis_error(view, paragraph_hash, error_message):
 # SCANNING THE PARAGRAPHS IN A SELECTION
 # ------------------------------------------------------------------------------
 #
-# "Scan Paragraph with Jev" with text selected sends every paragraph the
+# "Scan Paragraph" with text selected sends every paragraph the
 # selection touches to Jev, one after the other, and marks each one as its
 # result arrives. Every paragraph is sent, even one already analysed, so a
 # scan is also the way to refresh results.
@@ -2611,7 +2644,7 @@ class AuthorToolsEventListener(sublime_plugin.EventListener):
 
 class AuthorToolsAnalyseCurrentParagraphCommand(sublime_plugin.TextCommand):
     """
-    Author Tools: Scan Paragraph with Jev
+    Author Tools: Scan Paragraph
 
     Forces a fresh request for the caret's paragraph, ignoring the cache.
     Also the way to analyse a paragraph you've just written without leaving
